@@ -1,0 +1,176 @@
+<!-- See https://github.com/gorilla/websocket/blob/master/examples/chat/home.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Chat Example</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script type="text/javascript">
+        window.onload = function () {
+            var conn;
+            var msg = document.getElementById("msg");
+            var log = document.getElementById("log");
+            var fileInput = document.getElementById("fileInput");
+            var name = document.getElementById("nametag")
+
+            function appendLog(item) {
+                var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+                log.appendChild(item);
+                if (doScroll) {
+                    log.scrollTop = log.scrollHeight - log.clientHeight;
+                }
+            }
+            function updateImageSource(imageData) {
+                var img = document.getElementById("myImg");
+                img.src = imageData
+            }
+
+
+            document.getElementById("form").onsubmit = function () {
+                if (!conn) {
+                    return false;
+                }
+                if (!msg.value && !fileInput.files[0]) {
+                    return false;
+                }
+                if (msg.value) {
+                    var message = {
+                        type: "text",
+                        data: msg.value,
+                        name: name.value
+                    }
+                    conn.send(JSON.stringify(message));
+                    msg.value = "";
+                }
+                if (fileInput.files[0]) {
+                    var reader = new FileReader();
+                    
+                    reader.onload = function (event) {
+                        var imageMsg = {
+                            type: "image",
+                            data: event.target.result,
+                            name: name.value
+                        };
+                        conn.send(JSON.stringify(imageMsg));
+                    };
+                    reader.readAsDataURL(fileInput.files[0]);
+                    //empty file input
+                    fileInput.value = "";
+                }
+
+                return false;
+            };
+
+            if (window["WebSocket"]) {
+                conn = new WebSocket("ws://" + document.location.host + "/ws");
+
+                conn.onclose = function (evt) {
+                    var item = document.createElement("div");
+                    item.innerHTML = "<b>Connection closed.</b>";
+                    appendLog(item);
+                };
+                conn.onmessage = function (evt) {
+                    var messages = evt.data.split('\n');
+
+                    for (var i = 0; i < messages.length; i++) {
+                        var item;
+                        if (JSON.parse(messages[i])['type'] === 'image') {
+                            item = document.createElement("img");
+                            item.className = "imgContent"
+                            item.src = JSON.parse(messages[0])['data'];
+
+                        } else if (JSON.parse(messages[i])['type'] === 'text') {
+
+                            var item = document.createElement("div");
+                            item.className = "message"; // You can define CSS styles for this class
+
+                            var usernameElement = document.createElement("div");
+                            usernameElement.className = "username"; // You can define CSS styles for this class
+                            usernameElement.textContent = JSON.parse(messages[i])['name'];
+
+                            var messageContent = document.createElement("div");
+                            messageContent.className = "message-content"; // You can define CSS styles for this class
+                            messageContent.textContent = JSON.parse(messages[i])['data'];
+
+                            item.appendChild(usernameElement);
+                            item.appendChild(messageContent);
+
+
+
+                        }
+                        appendLog(item);
+
+                    }
+                };
+            } else {
+                var item = document.createElement("div");
+                item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+                appendLog(item);
+            }
+        };
+    </script>
+    <style type="text/css">
+        body,
+        html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .username {
+            font-weight: bold;
+        }
+
+        .imgContent {
+            height: 100px;
+            width: 100px;
+        }
+        #log{
+            height: 300px;
+            overflow-y: scroll;
+            padding-bottom: 10px;
+        }
+        .container-fluid {
+            padding: 10px;
+            margin: 10px;
+        }
+        .border p-3{
+            border: 1px solid black;
+            margin-bottom: 10px;
+        }
+
+    </style>
+</head>
+
+
+<body>
+    <div class="container-fluid">
+            <div class="col-12">
+                <div id="log" class="border p-3">  </div>
+            </div>
+        <div class="row">
+            <div class="col-12">
+                <form id="form">
+                    <div class="input-group mb-3">
+                        <input type="text" id="nametag" class="form-control" placeholder="Your Name">
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="text" id="msg" class="form-control" placeholder="Message">
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <input type="file" id="fileInput" class="form-control">
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
